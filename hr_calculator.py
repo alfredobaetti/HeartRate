@@ -11,8 +11,8 @@ def find_heart_rate(fft, freqs, freq_min, freq_max):
         else:
             fft_maximums.append(0)
 
-    plt.plot(fft_maximums, 'ro', linestyle = 'solid', color = 'red')
-    plt.show()
+    # plt.plot(fft_maximums, 'ro', linestyle = 'solid', color = 'red')
+    # plt.show()
 
     peaks, properties = signal.find_peaks(fft_maximums)
     max_peak = -1
@@ -26,7 +26,7 @@ def find_heart_rate(fft, freqs, freq_min, freq_max):
             max_freq = fft_maximums[peak]
             max_peak = peak
 
-    plt.plot(freqs, 'ro', linestyle = 'solid', color = 'green')
-    plt.show()
+    # plt.plot(freqs, 'ro', linestyle = 'solid', color = 'green')
+    # plt.show()
 
     return freqs[max_peak] * 60

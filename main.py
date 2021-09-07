@@ -1,3 +1,4 @@
+from operator import le
 from signal_handler import Handler
 import numpy as np
 import fft_filter
@@ -11,8 +12,10 @@ import matplotlib.pyplot as plt
 from imutils import face_utils
 import scipy.fftpack as fftpack
 from signal_processing import Signal_processing
+import time
 
-freqs_min = 0.7
+
+freqs_min = 0.8
 freqs_max = 4
 
 def shape_to_np(shape, dtype="int"):
@@ -27,20 +30,41 @@ def shape_to_np(shape, dtype="int"):
 	# return the list of (x, y)-coordinates
 	return coords
 
+def get_forehead_roi(face_points):
+    # Store the points in a Numpy array so we can easily get the min and max for x and y via slicing
+    points = np.zeros((len(face_points.parts()), 2))
+    for i, part in enumerate(face_points.parts()):
+        points[i] = (part.x, part.y)
+
+    # Forehead area between eyebrows
+    # See:  https://matthewearl.github.io/2015/07/28/switching-eds-with-python/
+    min_x = int(points[21, 0])
+    min_y = int(min(points[21, 1], points[22, 1]))
+    max_x = int(points[22, 0])
+    max_y = int(max(points[21, 1], points[22, 1]))
+    left = min_x
+    right = max_x
+    top = min_y - (max_x - min_x)
+    bottom = max_y * 0.98
+    return int(left), int(right), int(top), int(bottom)
+
 def get_hr(ROI, fps):
 
     signal_handler = Handler(ROI)
     MovingAverage = MovingAverageFilter(1)
     SignalProcessing = Signal_processing()
 
+    t = np.arange(0, len(ROI)/fps/2, len(ROI)/fps/300)
+
     """Método GUI"""
-    # g = SignalProcessing.extract_color(ROI)
+    # blue, green, red = signal_handler.get_channel_signal()
+    # g = np.array(green)
 
     # detrended_data = SignalProcessing.signal_detrending(g)
 
-    # #interpolated_data = SignalProcessing.interpolation(detrended_data, times)
+    # interpolated_data = SignalProcessing.interpolation(detrended_data, times)
 
-    # normalized_data = SignalProcessing.normalization(detrended_data)
+    # normalized_data = SignalProcessing.normalization(interpolated_data)
 
     # fft_of_interest, freqs_of_interest = SignalProcessing.fft(normalized_data, fps)
     
@@ -57,39 +81,50 @@ def get_hr(ROI, fps):
 
 
     """GREEN CHANNEL"""
-    blue, green, red = signal_handler.get_channel_signal()
-    green = np.array(green)
-    le_X = green
+    # blue, green, red = signal_handler.get_channel_signal()
+    # green = np.array(green)
+    # le_X = green
 
 
     """LAPLACIAN EIGENMAPS"""
-    # blue, green, red = signal_handler.get_channel_signal()
-    # matrix = np.vstack((blue,green,red))
-    # matrix = matrix.T
-    # le = SpectralEmbedding(n_components=1)
-    # le_X = le.fit_transform(matrix)
+    blue, green, red = signal_handler.get_channel_signal()
+    matrix = np.vstack((blue,green,red))
+    matrix = matrix.T
+    le = SpectralEmbedding(n_components=1)
+    le_X = le.fit_transform(matrix)
 
 
-    plt.plot(le_X, 'ro', linestyle = 'solid', color = 'green')
-    plt.show()
+
+    # plt.plot(t, le_X, 'ro', linestyle = 'solid', color = 'green')
+    # plt.show()
 
     """FILTRO PARA ELIMINAR PUNTOS SINGULARES"""
     # for i in range(len(le_X)):
     #     if(abs(le_X[i]-np.mean(le_X))>10*np.mean(le_X)):
-    #         le_X[i] = le_X[i-1]
+    #         le_X[i] = (le_X[i-1]+le_X[i-2])/2
 
     """FILTRO DETREND"""
-    le_X = signal.detrend(le_X)
+    le_X = SignalProcessing.signal_detrending(le_X)
 
-    plt.plot(le_X, 'ro', linestyle = 'solid', color = 'red')
-    plt.show()
+    # plt.plot(t, le_X, 'ro', linestyle = 'solid', color = 'blue')
+    # plt.show()
+
+    """INTERPOLATION"""
+    le_X = SignalProcessing.interpolation(le_X, times)
+
+    # plt.plot(t, le_X, 'ro', linestyle = 'solid', color = 'red')
+    # plt.show()
+
+    """NORMALIZACIÓN"""
+    le_X = SignalProcessing.normalization(le_X)
+
 
     """FILTRO PARA SUAVIZAR CURVA"""
     for i in range(len(le_X)):
         le_X[i] = MovingAverage.start(le_X[i])
 
-    plt.plot(le_X[7:], 'ro', linestyle = 'solid', color = 'blue')
-    plt.show()
+    # plt.plot(t, le_X, 'ro', linestyle = 'solid', color = 'blue')
+    # plt.show()
 
 
     """BANDPASS FILTER"""
@@ -131,12 +166,16 @@ def get_hr(ROI, fps):
 if __name__ == '__main__':
     video_path = 'IMG_1603.mp4'
     ROI = []
+    HR = []
     heartrate = 0
     camera_code = 0
     capture = cv.VideoCapture(video_path)
     fps = capture.get(cv.CAP_PROP_FPS)
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+    times = []
+    t0 = time.time()
+    p=0
 
     while capture.isOpened():
         ret, frame = capture.read()
@@ -145,12 +184,14 @@ if __name__ == '__main__':
         #dects = detector(frame)
         grayf = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         face = detector(grayf, 0)
+        times.append(time.time() - t0)
         #for face in dects:
         if len(face) >0:
             shape = predictor(grayf, face[0])
             shape = shape_to_np(shape)  
             # for (a, b) in shape:
-            #      cv.circle(frame, (a, b), 1, (0, 0, 255), -1) #draw facial landmarks    
+            #      cv.circle(frame, (a, b), 1, (0, 0, 255), -1) #draw facial landmarks 
+
             left = face[0].left()
             right = face[0].right()
             top = face[0].top()
@@ -166,11 +207,12 @@ if __name__ == '__main__':
                     shape[54][0]:shape[12][0]]  
             ROI2 =  frame[shape[29][1]:shape[33][1], #left cheek
                     shape[4][0]:shape[48][0]]   
+
             #cv.rectangle(frame, (left + w // 9 * 2, top + h // 10 * 3), (left + w // 9 * 8, top + h // 10 * 7), color=(0, 0, 255))
             #cv.rectangle(frame, (left, top), (left + w, top + h), color=(0, 0, 255))
             #ROI3 = (ROI1 + ROI2) /2
             ROI.append(ROI1)    
-            #ROI.append(ROI2)
+            ROI.append(ROI2)
         # left = face.left()
         # right = face.right()
         # top = face.top()
@@ -182,12 +224,28 @@ if __name__ == '__main__':
         #              color=(0, 0, 255))
         # cv.rectangle(frame, (left, top), (left + w, top + h), color=(0, 0, 255))
         # ROI.append(roi)
-        if len(ROI) == 100:
-            heartrate = get_hr(ROI, fps)
-            for i in range(10):
-                ROI.pop(0)
 
-        cv.putText(frame, '{:.1f}bps'.format(heartrate), (50, 300), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2)
+        if len(ROI) == 600:
+            heartrate = get_hr(ROI, fps)
+            HR.append(heartrate)
+            for i in range(60):
+                ROI.pop(0)
+            for i in range(30):
+                times.pop(0)
+
+        if len(HR) > 20:
+            #if(max(HR-np.mean(HR))<5):
+            cv.putText(frame, '{:.1f}bpm'.format(np.mean(HR)), (50, 300), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2)
+            
+            
+            #if(max(HR-np.mean(HR))<5): #show HR if it is stable -the change is not ovenr 5 bpm- for 3s
+
+        if len(HR) > 40:
+            for i in range(20):
+                HR.pop(0)
+
+        print(np.mean(HR))
+        #cv.putText(frame, '{:.1f}bps'.format(heartrate), (50, 300), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2)
         cv.imshow('frame', frame)
         if cv.waitKey(1) & 0xFF == ord('q'):
             break

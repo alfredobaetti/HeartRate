@@ -49,7 +49,7 @@ class Signal_processing():
         
         even_times = np.linspace(times[0], times[-1], L)
         
-        interp = np.interp(even_times, times, data_buffer)
+        interp = np.interp(even_times, times, data_buffer[:, 0])
         interpolated_data = np.hamming(L) * interp
         return interpolated_data
         
