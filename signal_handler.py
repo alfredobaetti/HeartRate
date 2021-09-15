@@ -14,6 +14,15 @@ class Handler:
         green = []
         red = []
         c=0
+
+        b, g, r = cv.split(roi)
+
+        g = np.mean(g)
+        r = np.mean(r)
+        b = np.mean(b)
+
+        return g, r, b
+
         for roi in self.ROI:
             b, g, r = cv.split(roi)
             #b = np.mean(np.sum(b)) / np.std(b)

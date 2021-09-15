@@ -48,13 +48,13 @@ def get_forehead_roi(face_points):
     bottom = max_y * 0.98
     return int(left), int(right), int(top), int(bottom)
 
-def get_hr(ROI, fps):
+def get_hr(blue, green, red, fps):
 
-    signal_handler = Handler(ROI)
+    #signal_handler = Handler(ROI)
     MovingAverage = MovingAverageFilter(1)
     SignalProcessing = Signal_processing()
 
-    t = np.arange(0, len(ROI)/fps/2, len(ROI)/fps/300)
+    t = np.arange(0, cant_ROI/fps, cant_ROI/fps/300)
 
     """Método GUI"""
     # blue, green, red = signal_handler.get_channel_signal()
@@ -87,7 +87,7 @@ def get_hr(ROI, fps):
 
 
     """LAPLACIAN EIGENMAPS"""
-    blue, green, red = signal_handler.get_channel_signal()
+    #blue, green, red = signal_handler.get_channel_signal()
     matrix = np.vstack((blue,green,red))
     matrix = matrix.T
     le = SpectralEmbedding(n_components=1)
@@ -164,9 +164,12 @@ def get_hr(ROI, fps):
 
 
 if __name__ == '__main__':
-    video_path = 'IMG_1603.mp4'
+    video_path = 'IMG_1616.mp4'
     ROI = []
     HR = []
+    BLUE = []
+    GREEN = []
+    RED = []
     heartrate = 0
     camera_code = 0
     capture = cv.VideoCapture(video_path)
@@ -175,7 +178,9 @@ if __name__ == '__main__':
     predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
     times = []
     t0 = time.time()
-    p=0
+    SignalProcessing = Signal_processing()
+    #p=0
+    cant_ROI = 0
 
     while capture.isOpened():
         ret, frame = capture.read()
@@ -211,31 +216,46 @@ if __name__ == '__main__':
             #cv.rectangle(frame, (left + w // 9 * 2, top + h // 10 * 3), (left + w // 9 * 8, top + h // 10 * 7), color=(0, 0, 255))
             #cv.rectangle(frame, (left, top), (left + w, top + h), color=(0, 0, 255))
             #ROI3 = (ROI1 + ROI2) /2
-            ROI.append(ROI1)    
-            ROI.append(ROI2)
-        # left = face.left()
-        # right = face.right()
-        # top = face.top()
-        # bottom = face.bottom()
-        # h = bottom - top
-        # w = right - left
-        # roi = frame[top + h // 10 * 2:top + h // 10 * 7, left + w // 9 * 2:left + w // 9 * 8]
-        # cv.rectangle(frame, (left + w // 9 * 2, top + h // 10 * 3), (left + w // 9 * 8, top + h // 10 * 7),
-        #              color=(0, 0, 255))
-        # cv.rectangle(frame, (left, top), (left + w, top + h), color=(0, 0, 255))
-        # ROI.append(roi)
+            b1, g1, r1 = Signal_processing.get_channel_signal(ROI1)
+            b2, g2, r2 = Signal_processing.get_channel_signal(ROI2)
 
-        if len(ROI) == 600:
-            heartrate = get_hr(ROI, fps)
+            b = (b1+b2)/2
+            g = (g1+g2)/2
+            r = (r1+r2)/2
+
+            cant_ROI = cant_ROI + 1
+
+            BLUE.append(b)
+            GREEN.append(g)
+            RED.append(r)
+
+            #ROI.append(ROI1)    
+            #ROI.append(ROI2)
+
+        if cant_ROI == 200:
+            heartrate = get_hr(BLUE, GREEN, RED, fps)
             HR.append(heartrate)
-            for i in range(60):
-                ROI.pop(0)
+
             for i in range(30):
+                BLUE.pop(0)
+                GREEN.pop(0)
+                RED.pop(0)
                 times.pop(0)
+                cant_ROI = cant_ROI - 1
+
+                
+
+        # if len(ROI) == 600:
+        #     heartrate = get_hr(ROI, fps)
+        #     HR.append(heartrate)
+        #     for i in range(60):
+        #         ROI.pop(0)
+        #     for i in range(30):
+        #         times.pop(0)
 
         if len(HR) > 20:
             #if(max(HR-np.mean(HR))<5):
-            cv.putText(frame, '{:.1f}bpm'.format(np.mean(HR)), (50, 300), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2)
+            cv.putText(frame, '{:.0f}bpm'.format(np.mean(HR)), (50, 300), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2)
             
             
             #if(max(HR-np.mean(HR))<5): #show HR if it is stable -the change is not ovenr 5 bpm- for 3s

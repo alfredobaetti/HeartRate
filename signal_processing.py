@@ -7,7 +7,20 @@ from scipy import signal
 class Signal_processing():
     def __init__(self):
         self.a = 1
-        
+    
+    def get_channel_signal(ROI):
+        # blue = []
+        # green = []
+        # red = []
+
+        b, g, r = cv2.split(ROI)
+
+        g = np.mean(g)
+        r = np.mean(r)
+        b = np.mean(b)
+
+        return b, g, r
+
     def extract_color(self, ROIs):
         '''
         extract average value of green color from ROIs
