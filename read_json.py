@@ -15,7 +15,7 @@ def find_nearest(array,value):
             return array[idx], idx
 
 def getTS():
-    with open("10-01.json") as jsonFile:
+    with open("C:/Users/baett/OneDrive/Desktop/Dataset proyecto/05-01.json") as jsonFile:
         jsonObject = json.load(jsonFile)
         jsonFile.close()
 
@@ -48,7 +48,10 @@ def getTS():
     for c in TSfr:
         ts, idx = find_nearest(TShr, c)
         TShraprox.append(ts)
-        HRaprox.append(HR[idx])
+        try:
+            HRaprox.append(HR[idx])
+        except:
+            pass
     
     return TSfr, TShraprox, HRaprox
 

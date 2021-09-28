@@ -13,10 +13,12 @@ from imutils import face_utils
 import scipy.fftpack as fftpack
 from signal_processing import Signal_processing
 import time
+import read_json
+import glob
 
 
-freqs_min = 0.8
-freqs_max = 4
+freqs_min = 0.7
+freqs_max = 3
 
 def shape_to_np(shape, dtype="int"):
 	# initialize the list of (x, y)-coordinates
@@ -50,6 +52,7 @@ def get_forehead_roi(face_points):
 
 def get_hr(blue, green, red, fps):
 
+    #fps = cant_ROI / (times[-1] - times[0])
     #signal_handler = Handler(ROI)
     MovingAverage = MovingAverageFilter(1)
     SignalProcessing = Signal_processing()
@@ -83,15 +86,15 @@ def get_hr(blue, green, red, fps):
     """GREEN CHANNEL"""
     # blue, green, red = signal_handler.get_channel_signal()
     # green = np.array(green)
-    # le_X = green
+    le_X = green
 
 
     """LAPLACIAN EIGENMAPS"""
     #blue, green, red = signal_handler.get_channel_signal()
-    matrix = np.vstack((blue,green,red))
-    matrix = matrix.T
-    le = SpectralEmbedding(n_components=1)
-    le_X = le.fit_transform(matrix)
+    # matrix = np.vstack((blue,green,red))
+    # matrix = matrix.T
+    # le = SpectralEmbedding(n_components=1)
+    # le_X = le.fit_transform(matrix)
 
 
 
@@ -164,7 +167,7 @@ def get_hr(blue, green, red, fps):
 
 
 if __name__ == '__main__':
-    video_path = 'IMG_1616.mp4'
+    video_path = 'IMG_1627.mp4'
     ROI = []
     HR = []
     BLUE = []
@@ -172,26 +175,31 @@ if __name__ == '__main__':
     RED = []
     heartrate = 0
     camera_code = 0
-    capture = cv.VideoCapture(video_path)
+    capture = cv.VideoCapture(camera_code)
     fps = capture.get(cv.CAP_PROP_FPS)
+    #fps = 30
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
     times = []
     t0 = time.time()
     SignalProcessing = Signal_processing()
-    #p=0
+    p=0
     cant_ROI = 0
-
-    while capture.isOpened():
-        ret, frame = capture.read()
-        if not ret:
-            continue
+    TSfr, TShr, HeartRate = read_json.getTS()
+    #while capture.isOpened():
+    for filename in glob.glob('C:/Users/baett/OneDrive/Desktop/Dataset proyecto/05-01/*.png'):
+        frame = cv.imread(filename)
+    
+        #ret, frame = capture.read()
+        #if not ret:
+            #continue
         #dects = detector(frame)
         grayf = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         face = detector(grayf, 0)
-        times.append(time.time() - t0)
+        
         #for face in dects:
         if len(face) >0:
+            times.append(time.time() - t0)
             shape = predictor(grayf, face[0])
             shape = shape_to_np(shape)  
             # for (a, b) in shape:
@@ -232,7 +240,7 @@ if __name__ == '__main__':
             #ROI.append(ROI1)    
             #ROI.append(ROI2)
 
-        if cant_ROI == 200:
+        if cant_ROI == 300:
             heartrate = get_hr(BLUE, GREEN, RED, fps)
             HR.append(heartrate)
 
@@ -253,12 +261,14 @@ if __name__ == '__main__':
         #     for i in range(30):
         #         times.pop(0)
 
-        if len(HR) > 20:
+        if len(HR) > 10:
             #if(max(HR-np.mean(HR))<5):
             cv.putText(frame, '{:.0f}bpm'.format(np.mean(HR)), (50, 300), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2)
-            
+            cv.putText(frame, '{:.0f}bpm'.format(HeartRate[p]), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 0, 0), 2)
             
             #if(max(HR-np.mean(HR))<5): #show HR if it is stable -the change is not ovenr 5 bpm- for 3s
+    
+        p=p+1
 
         if len(HR) > 40:
             for i in range(20):
