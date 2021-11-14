@@ -15,7 +15,7 @@ def find_nearest(array,value):
             return array[idx], idx
 
 def getTS():
-    with open("C:/Users/baett/OneDrive/Desktop/Dataset proyecto/05-01.json") as jsonFile:
+    with open("C:/Users/baett/OneDrive/Desktop/Proyecto final/Dataset proyecto/10-01.json") as jsonFile:
         jsonObject = json.load(jsonFile)
         jsonFile.close()
 
