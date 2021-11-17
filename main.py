@@ -32,34 +32,47 @@ def shape_to_np(shape, dtype="int"):
 	# return the list of (x, y)-coordinates
 	return coords
 
-def get_hr(blue, green, red, fps):
+def get_hr(green, fps):
 
-    MovingAverage = MovingAverageFilter(1)
-    SignalProcessing = Signal_processing()
+    MovingAverage = MovingAverageFilter()
 
-    #t = np.arange(0, cant_ROI/fps, cant_ROI/fps/300)
-
+    t = np.arange(0, len(green)/fps, len(green)/fps/300)
 
     """GREEN CHANNEL"""
-    le_X = green
+    signal = green
+    #plt.title('Green channel')
+    #plt.plot(t, signal, 'ro', linestyle = 'solid', color = 'green')
+    #plt.show()
 
     """FILTRO DETREND"""
-    le_X = SignalProcessing.signal_detrending(le_X)
+    signal = SignalProcessing.signal_detrending(signal)
+    #plt.title('Filtro detrend')
+    #plt.plot(t, signal, 'ro', linestyle = 'solid', color = 'green')
+    #plt.show()
 
     """INTERPOLATION"""
-    le_X = SignalProcessing.interpolation(le_X, times)
+    signal = SignalProcessing.interpolation(signal, times)
+    #plt.title('Interpolación')
+    #plt.plot(t, signal, 'ro', linestyle = 'solid', color = 'green')
+    #plt.show()
 
     """NORMALIZACIÓN"""
-    le_X = SignalProcessing.normalization(le_X)
+    signal = SignalProcessing.normalization(signal)
+    #plt.title('Normalización')
+    #plt.plot(t, signal, 'ro', linestyle = 'solid', color = 'green')
+    #plt.show()
 
     """FILTRO PARA SUAVIZAR CURVA"""
-    for i in range(len(le_X)):
-        le_X[i] = MovingAverage.start(le_X[i])
+    for i in range(len(signal)):
+        signal[i] = MovingAverage.start(signal[i])
+    #plt.title('Filtro pasa-bajo (curva suavizada)')
+    #plt.plot(t, signal, 'ro', linestyle = 'solid', color = 'green')
+    #plt.show()
 
-    fft, freqs = fft_filter.fft_filter(le_X, freqs_min, freqs_max, fps)
-    heartrate_1 = hr_calculator.find_heart_rate(fft, freqs, freqs_min, freqs_max)
+    fft, freqs = fft_filter.fft_filter(signal, freqs_min, freqs_max, fps)
+    heartrate = hr_calculator.find_heart_rate(fft, freqs, freqs_min, freqs_max)
 
-    return heartrate_1
+    return heartrate
 
 
 def make_video():
@@ -93,7 +106,7 @@ if __name__ == '__main__':
     cant_ROI = 0
     TSfr, TShr, HeartRate = read_json.getTS()
     #while capture.isOpened():
-    for filename in glob.glob('C:/Users/baett/OneDrive/Desktop/Proyecto final/Dataset proyecto/10-01/*.png'):
+    for filename in glob.glob('C:/Users/baett/OneDrive/Desktop/Proyecto final/Dataset proyecto/04-01/*.png'):
         frame = cv.imread(filename)
     
         #ret, frame = capture.read()
@@ -108,13 +121,6 @@ if __name__ == '__main__':
             shape = predictor(grayf, face[0])
             shape = shape_to_np(shape)  
 
-            left = face[0].left()
-            right = face[0].right()
-            top = face[0].top()
-            bottom = face[0].bottom()
-            h = bottom - top
-            w = right - left    
-  
             cv.rectangle(frame,(shape[54][0], shape[29][1]), #draw rectangle on right and left cheeks
                         (shape[12][0],shape[33][1]), (0,255,0), 0)
             cv.rectangle(frame, (shape[4][0], shape[29][1]), 
@@ -130,42 +136,31 @@ if __name__ == '__main__':
             b1, g1, r1 = Signal_processing.get_channel_signal(ROI1)
             b2, g2, r2 = Signal_processing.get_channel_signal(ROI2)
 
-            b = (b1+b2)/2
             g = (g1+g2)/2
-            r = (r1+r2)/2
 
-            cant_ROI = cant_ROI + 1
-
-            BLUE.append(b)
             GREEN.append(g)
-            RED.append(r)
 
-        if cant_ROI == 300:
-            heartrate = get_hr(BLUE, GREEN, RED, fps)
+        if len(GREEN) == 300:
+            heartrate = get_hr(GREEN, fps)
             HR.append(heartrate)
 
             for i in range(30):
-                BLUE.pop(0)
                 GREEN.pop(0)
-                RED.pop(0)
                 times.pop(0)
-                cant_ROI = cant_ROI - 1
 
         if len(HR) > 10:
-            #if(max(HR-np.mean(HR))<5):
             cv.putText(frame, '{:.0f}bpm'.format(np.mean(HR)), (200, 50), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2)
             try:    
                 cv.putText(frame, '{:.0f}bpm'.format(HeartRate[p]), (50, 50), cv.FONT_HERSHEY_SIMPLEX, 1.2, (255, 0, 0), 2)
             except:
                 continue
-        p=p+1
 
         if len(HR) > 20:
             for i in range(2):
                 HR.pop(0)
 
         print(np.mean(HR))
-
+        p=p+1
         cv.imshow('frame', frame)
         frame_array.append(frame)
         if cv.waitKey(1) & 0xFF == ord('q'):

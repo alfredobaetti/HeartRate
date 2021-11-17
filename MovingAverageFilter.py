@@ -3,7 +3,7 @@
 
 class MovingAverageFilter:
     
-    def __init__(self, c):
+    def __init__(self):
         self.MAF_level = 8
         self.data = [0 for i in range(8)]
         print(self.data)

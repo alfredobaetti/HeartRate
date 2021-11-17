@@ -15,24 +15,15 @@ def find_nearest(array,value):
             return array[idx], idx
 
 def getTS():
-    with open("C:/Users/baett/OneDrive/Desktop/Proyecto final/Dataset proyecto/10-01.json") as jsonFile:
+    with open("C:/Users/baett/OneDrive/Desktop/Proyecto final/Dataset proyecto/04-01.json") as jsonFile:
         jsonObject = json.load(jsonFile)
         jsonFile.close()
-
-    # with open('px1_full.pkl', 'rb') as f:
-    #     data = pickle.load(f)
-    
-    # v=0
-    
 
     HR = []
     TShr = []
     TSfr = []
     TShraprox = []
     HRaprox = []
-
-    #1392722533137981000 ts hr aprox
-    #1392722533137008000 ts frame
 
     for c in range (len(jsonObject['/FullPackage'])):
         pulserate = jsonObject['/FullPackage'][c]['Value']['pulseRate']
@@ -44,7 +35,6 @@ def getTS():
         tsframe = jsonObject['/Image'][c]['Timestamp']
         TSfr.append(tsframe)
 
-
     for c in TSfr:
         ts, idx = find_nearest(TShr, c)
         TShraprox.append(ts)
@@ -55,8 +45,3 @@ def getTS():
     
     return TSfr, TShraprox, HRaprox
 
-
-
-#print(product)
-#print(pulserate)
-#print(text)    
